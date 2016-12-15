@@ -1,0 +1,15 @@
+{
+    "name": "katinsv/meetroom",
+    "description": "Make order for meet room",
+    "require": {
+        "silex/silex": "^2.0",
+        "twig/twig": "^1.29",
+        "league/plates": "^3.1"
+    },
+    "authors": [
+        {
+            "name": "Sergey Katin",
+            "email": "katinsv@profi.ru"
+        }
+    ]
+}
