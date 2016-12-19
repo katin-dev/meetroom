@@ -25,14 +25,20 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
 
   // Сохранение новой брони:
   if($req->getMethod() == 'POST') {
-    $reserve = [
-      'room_id' => $req->request->get('room_id'),
-      'dt_from' => $req->request->get('date') . ' ' . $req->request->get('from_hour') . ':' . $req->request->get('from_minute') . ':00',
-      'dt_to'   => $req->request->get('date') . ' ' . $req->request->get('to_hour') . ':' . $req->request->get('to_minute') . ':00',
-      'comment' => $req->request->get('comment'),
-    ];
-    $db->insert("reserve", $reserve);
-    return $app->redirect('/?date=' . $req->request->get('date'));
+
+    if($req->request->get('del')) {
+      $db->delete("reserve", ["id" => $req->request->get("reserve_id")]);
+      return $app->redirect('/?date=' . $req->request->get('date'));
+    } else {
+      $reserve = [
+        'room_id' => $req->request->get('room_id'),
+        'dt_from' => $req->request->get('date') . ' ' . $req->request->get('from_hour') . ':' . $req->request->get('from_minute') . ':00',
+        'dt_to'   => $req->request->get('date') . ' ' . $req->request->get('to_hour') . ':' . $req->request->get('to_minute') . ':00',
+        'comment' => $req->request->get('comment'),
+      ];
+      $db->insert("reserve", $reserve);
+      return $app->redirect('/?date=' . $req->request->get('date'));
+    }
   }
 
   $stmt = $db->query("SELECT * FROM room ORDER BY name");
@@ -53,6 +59,12 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
     $hours[] = array('hour' => $h, 'from' => $h * 60, 'to'  => ($h + 1) * 60);
   }
 
+  $stmt = $db->pdo->prepare("SELECT reserve.*, room.name FROM reserve JOIN room on room.id = reserve.room_id WHERE dt_from >= :dt AND dt_from < DATE_ADD(:dt, INTERVAL 1 DAY) ORDER BY dt_from");
+  $stmt->execute([
+    'dt' => $date
+  ]);
+  $reserves = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
   $days = array();
   for($d = 0; $d < count($dayNames); $d++) {
     $day = [
@@ -62,12 +74,12 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
       'slots'    => array()
     ];
 
-    $stmt = $db->pdo->prepare("SELECT * FROM reserve WHERE room_id = :room_id AND dt_from >= :dt AND dt_from < DATE_ADD(:dt, INTERVAL 1 DAY) ORDER BY dt_from");
-    $stmt->execute([
-      'room_id' => $rooms[$d]['id'],
-      'dt' => $date
-    ]);
-    $slots = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $slots = [];
+    foreach ($reserves as $reserve) {
+      if($reserve['room_id'] == $rooms[$d]['id']) {
+        $slots[] = $reserve;
+      }
+    }
 
     foreach ($slots as $slot) {
       $slot['from'] = ( strtotime($slot['dt_from']) - strtotime($date) ) / 60;
@@ -126,7 +138,8 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
       ["id" => 2, "name" => "У окна"],
       ["id" => 3, "name" => "Рыцари"],
       ["id" => 4, "name" => "HR"]
-    ]
+    ],
+    "reserves" => $reserves
   ]);
 });
 

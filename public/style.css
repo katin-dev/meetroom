@@ -64,3 +64,9 @@ h1 > form {
 h1 > form > input {
     vertical-align: middle;
 }
+
+#SetDate .dtpckr {
+    border:none;
+    border-bottom: 2px dashed;
+    cursor: pointer;
+}

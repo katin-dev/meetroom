@@ -37,13 +37,31 @@
     <h1>
         Переговорки
         <form action="" method="get" id="SetDate">
-            <input type="text" name="date" value="<?=$date?>" class="dtpckr" />
-            <input type="submit" value="OK" class="btn btn-success"/>
+            <input type="text" name="date" value="<?=$date?>" class="dtpckr" style="width:120px;"/>
         </form>
     </h1>
     <?=$body?>
-    <p></p>
-    <div class="panel panel-default">
+
+    <table class="table">
+        <?php foreach ($reserves as $reserve): ?>
+        <tr>
+            <td><?=$reserve['name']?></td>
+            <td><?=$reserve['dt_from']?></td>
+            <td><?=$reserve['dt_to']?></td>
+            <td><?=$this->e($reserve['comment'])?></td>
+            <td>
+                <form action="" method="post">
+                    <input type="hidden" name="reserve_id" value="<?=$reserve['id']?>" />
+                    <input type="hidden" name="date" value="<?=$date?>" />
+                    <input type="submit" name="del" value="Удалить" class="btn btn-danger btn-xs" onclick="return confirm('Вы правда хотите удалить эту бронь?');"/>
+                </form>
+            </td>
+        </tr>
+        <?php endforeach; ?>
+    </table>
+
+    <p><button class="btn btn-success" onclick="$('#ReservePanel').toggleClass('hidden');">Забронировать переговорку</button></p>
+    <div class="panel panel-default hidden" id="ReservePanel">
         <div class="panel-heading">
             <strong data-toggle="ReserveForm">Забронировать переговорку</strong>
         </div>
