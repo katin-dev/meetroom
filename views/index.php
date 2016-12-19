@@ -37,7 +37,7 @@
     <h1>
         Переговорки
         <form action="" method="get" id="SetDate">
-            <input type="date" name="date" value="<?=$date?>" class="dtpckr" />
+            <input type="text" name="date" value="<?=$date?>" class="dtpckr" />
             <input type="submit" value="OK" class="btn btn-success"/>
         </form>
     </h1>
@@ -60,7 +60,7 @@
                 <div class="form-inline">
                     <div class="form-group">
                         <label>Когда?</label>
-                        <input type="date" value="<?=$date?>" class="dtpckr" name="date" style="width:85px;"/>
+                        <input type="text" value="<?=$date?>" class="dtpckr" name="date" style="width:85px;"/>
                         С
                         <select name="from_hour">
                           <?php
