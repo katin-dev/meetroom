@@ -1,7 +1,9 @@
 <?php
-
-require_once __DIR__.'/../vendor/autoload.php';
 use Symfony\Component\HttpFoundation\Request;
+
+define('_APP_', realpath(__DIR__ . '/../app'));
+require_once __DIR__.'/../vendor/autoload.php';
+$config = require_once _APP_ . '/config.php';
 
 /* @var $app Silex\Application */
 $app = new Silex\Application();
@@ -10,26 +12,27 @@ $view = new League\Plates\Engine(__DIR__ . '/../views');
 $db = new medoo([
   // required
   'database_type' => 'mysql',
-  'database_name' => 'meetroom',
-  'server' => 'localhost',
-  'username' => 'meetroom',
-  'password' => 'meetpass',
-  'charset' => 'utf8'
+  'database_name' => $config['db']['dbname'],
+  'server'        => $config['db']['host'],
+  'username'      => $config['db']['username'],
+  'password'      => $config['db']['password'],
+  'charset'       => 'utf8'
 ]);
 
 $app->match('/', function (Request $req) use ($app, $view, $db) {
 
   $date = $req->get('date', date('Y-m-d'));
 
+  // Сохранение новой брони:
   if($req->getMethod() == 'POST') {
     $reserve = [
       'room_id' => $req->request->get('room_id'),
-      'dt_from' => date('Y-m-d') . ' ' . $req->request->get('from_hour') . ':' . $req->request->get('from_minute') . ':00',
-      'dt_to'   => date('Y-m-d') . ' ' . $req->request->get('to_hour') . ':' . $req->request->get('to_minute') . ':00',
+      'dt_from' => $req->request->get('date') . ' ' . $req->request->get('from_hour') . ':' . $req->request->get('from_minute') . ':00',
+      'dt_to'   => $req->request->get('date') . ' ' . $req->request->get('to_hour') . ':' . $req->request->get('to_minute') . ':00',
       'comment' => $req->request->get('comment'),
     ];
     $db->insert("reserve", $reserve);
-    return $app->redirect('/');
+    return $app->redirect('/?date=' . $req->request->get('date'));
   }
 
   $stmt = $db->query("SELECT * FROM room ORDER BY name");
@@ -59,12 +62,16 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
       'slots'    => array()
     ];
 
-    $stmt = $db->query("SELECT * FROM reserve WHERE room_id = " . $rooms[$d]['id'] . " ORDER BY dt_from");
+    $stmt = $db->pdo->prepare("SELECT * FROM reserve WHERE room_id = :room_id AND dt_from >= :dt AND dt_from < DATE_ADD(:dt, INTERVAL 1 DAY) ORDER BY dt_from");
+    $stmt->execute([
+      'room_id' => $rooms[$d]['id'],
+      'dt' => $date
+    ]);
     $slots = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     foreach ($slots as $slot) {
-      $slot['from'] = ( strtotime($slot['dt_from']) - strtotime(date('Y-m-d')) ) / 60;
-      $slot['to']   = ( strtotime($slot['dt_to']) - strtotime(date('Y-m-d')) ) / 60;
+      $slot['from'] = ( strtotime($slot['dt_from']) - strtotime($date) ) / 60;
+      $slot['to']   = ( strtotime($slot['dt_to']) - strtotime($date) ) / 60;
 
       // На всякий случай убедимся, что это именно "свободный" слот:
       // Расчёт ширины слота (в процентах) и его левого смещения:
