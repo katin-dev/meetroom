@@ -55,3 +55,12 @@
 .calendar-day-head .calendar-dayname {
     border-right: none;
 }
+
+h1 > form {
+    display: inline-block;
+    font-size: 0.6em;
+    vertical-align: middle;
+}
+h1 > form > input {
+    vertical-align: middle;
+}

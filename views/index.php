@@ -17,34 +17,71 @@
 </head>
 <body>
 <div class="container">
-    <h1>Занятость переговорок</h1>
+    <h1>
+        Переговорки
+        <form action="" method="get">
+            <input type="date" name="date" value="<?=$date?>" class="datepicker" />
+            <input type="submit" value="OK" class="btn btn-success"/>
+        </form>
+    </h1>
     <?=$body?>
-    <form action="" method="post">
-        <h2>Забронировать переговорку</h2>
-        <div class="form-group">
-            <label>Выберите переговорку:</label>
-            <select name="id" class="form-control">
-              <?php foreach ($rooms as $room): ?>
-                  <option value="<?=$room['id']?>"><?=$this->e($room['name'])?></option>
-              <?php endforeach; ?>
-            </select>
+    <p></p>
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <strong data-toggle="ReserveForm">Забронировать переговорку</strong>
         </div>
-        <div class="form-inline">
-            <div class="form-group">
-                С <input type="date" class="form-control" name="from" />
-            </div>
-            <div class="form-group">
-                до <input type="date" class="form-control" name="to" />
-            </div>
-        </div>
-        <p></p>
-        <div class="form-group">
-            <label>Комментарий</label>
-            <textarea name="comment" class="form-control"></textarea>
-        </div>
+        <div class="panel-body" id="ReserveForm">
+            <form action="" method="post">
+                <div class="form-group">
+                    <label>Какую?</label>
+                    <select name="room_id" class="form-control">
+                      <?php foreach ($rooms as $room): ?>
+                          <option value="<?=$room['id']?>"><?=$this->e($room['name'])?></option>
+                      <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-inline">
+                    <div class="form-group">
+                        С
+                        <select name="from_hour">
+                          <?php
+                            echo implode("\n", array_map(function ($h) {
+                              return sprintf('<option value="%s">%02d</option>', $h, $h);
+                            }, range(0, 23)));
+                          ?>
+                        </select>
+                        <select name="from_minute">
+                          <?php for($m = 0; $m < 60; $m += 5): ?>
+                            <option value="<?=$m?>"><?=sprintf('%02d', $m)?></option>
+                          <?php endfor ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        до
+                        <select name="to_hour">
+                        <?php
+                        echo implode("\n", array_map(function ($h) {
+                          return sprintf('<option value="%s">%02d</option>', $h, $h);
+                        }, range(0, 23)));
+                        ?>
+                        </select>
+                        <select name="to_minute">
+                          <?php for($m = 0; $m < 60; $m += 5): ?>
+                              <option value="<?=$m?>"><?=sprintf('%02d', $m)?></option>
+                          <?php endfor ?>
+                        </select>
+                    </div>
+                </div>
+                <p></p>
+                <div class="form-group">
+                    <label>Комментарий</label>
+                    <textarea name="comment" class="form-control"></textarea>
+                </div>
 
-        <input type="submit" name="add" value="Забронировать" class="btn btn-success" />
-    </form>
+                <input type="submit" name="add" value="Забронировать" class="btn btn-success" />
+            </form>
+        </div>
+    </div>
 </div>
 </body>
 </html>

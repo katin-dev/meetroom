@@ -1,63 +1,36 @@
 <?php
 
 require_once __DIR__.'/../vendor/autoload.php';
+use Symfony\Component\HttpFoundation\Request;
 
 /* @var $app Silex\Application */
 $app = new Silex\Application();
 
 $view = new League\Plates\Engine(__DIR__ . '/../views');
+$db = new medoo([
+  // required
+  'database_type' => 'mysql',
+  'database_name' => 'meetroom',
+  'server' => 'localhost',
+  'username' => 'meetroom',
+  'password' => 'meetpass',
+  'charset' => 'utf8'
+]);
 
-$db = new PDO('mysql:dbname=meetroom;host=localhost', 'meetroom', 'meetpass');
+$app->match('/', function (Request $req) use ($app, $view, $db) {
 
+  $date = $req->get('date', date('Y-m-d'));
 
-$app->match('/', function () use ($app, $view, $db) {
-
-  $slots = json_decode('{
-    "1": [],
-    "2": [
-      {
-        "from": 420,
-        "to": 1345,
-        "strict": "free"
-      }
-    ],
-    "3": {
-      "0": {
-        "from": 420,
-        "to": 480,
-        "strict": "free"
-      }      
-    },
-    "4": [
-      {
-        "from": 420,
-        "to": 540,
-        "strict": "free"
-      }      
-    ],
-    "5": [
-      {
-        "from": 480,
-        "to": 540,
-        "strict": "free"
-      }      
-    ],
-    "6": [
-      
-    ],
-    "7": [
-      {
-        "from": 900,
-        "to": 1140,
-        "strict": "free"
-      },
-      {
-        "from": 1200,
-        "to": 1380,
-        "strict": "free"
-      }    
-    ]
-  }', true);
+  if($req->getMethod() == 'POST') {
+    $reserve = [
+      'room_id' => $req->request->get('room_id'),
+      'dt_from' => date('Y-m-d') . ' ' . $req->request->get('from_hour') . ':' . $req->request->get('from_minute') . ':00',
+      'dt_to'   => date('Y-m-d') . ' ' . $req->request->get('to_hour') . ':' . $req->request->get('to_minute') . ':00',
+      'comment' => $req->request->get('comment'),
+    ];
+    $db->insert("reserve", $reserve);
+    return $app->redirect('/');
+  }
 
   $stmt = $db->query("SELECT * FROM room ORDER BY name");
   $rooms = $stmt->fetchAll(\PDO::FETCH_ASSOC);
@@ -93,7 +66,6 @@ $app->match('/', function () use ($app, $view, $db) {
       $slot['from'] = ( strtotime($slot['dt_from']) - strtotime(date('Y-m-d')) ) / 60;
       $slot['to']   = ( strtotime($slot['dt_to']) - strtotime(date('Y-m-d')) ) / 60;
 
-      var_dump($slot);
       // На всякий случай убедимся, что это именно "свободный" слот:
       // Расчёт ширины слота (в процентах) и его левого смещения:
       $slot['width'] = 100 * ($slot['to'] - $slot['from']) / $dayLength;
@@ -141,6 +113,7 @@ $app->match('/', function () use ($app, $view, $db) {
   $html .= '</div>';
   return $view->render("index", [
     "body" => $html,
+    "date" => $date,
     "rooms" => [
       ["id" => 1, "name" => "Большая"],
       ["id" => 2, "name" => "У окна"],
