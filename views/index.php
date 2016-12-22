@@ -29,6 +29,10 @@
                $(e.target).parents('form').eq(0).submit();
             });
 
+            $('[name="from_hour"]').change(function () {
+                $('[name="to_hour"]').val(parseInt($(this).val()) + 1);
+            });
+
         });
     </script>
 </head>
@@ -48,6 +52,7 @@
             <td><?=$reserve['name']?></td>
             <td><?=$reserve['dt_from']?></td>
             <td><?=$reserve['dt_to']?></td>
+            <td><?=$reserve['repeated']?></td>
             <td><?=$this->e($reserve['comment'])?></td>
             <td>
                 <form action="" method="post">
@@ -106,6 +111,15 @@
                           <?php for($m = 0; $m < 60; $m += 5): ?>
                               <option value="<?=$m?>"><?=sprintf('%02d', $m)?></option>
                           <?php endfor ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        Повторять:
+                        <select name="repeat">
+                            <option value="">-</option>
+                            <option value="day">Каждый день</option>
+                            <option value="week">Каждую неделю</option>
+                            <option value="month">Каждый месяц</option>
                         </select>
                     </div>
                 </div>

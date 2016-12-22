@@ -8,5 +8,6 @@ CREATE TABLE reserve (
 	room_id INT UNSIGNED NOT NULL,
 	dt_from DATETIME NOT NULL,
 	dt_to DATETIME NOT NULL,
-	comment VARCHAR(200) NULL DEFAULT NULL
+	comment VARCHAR(200) NULL DEFAULT NULL,
+	repeated ENUM('day', 'week', 'month') NULL
 );

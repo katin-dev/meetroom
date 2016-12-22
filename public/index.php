@@ -35,6 +35,7 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
         'dt_from' => $req->request->get('date') . ' ' . $req->request->get('from_hour') . ':' . $req->request->get('from_minute') . ':00',
         'dt_to'   => $req->request->get('date') . ' ' . $req->request->get('to_hour') . ':' . $req->request->get('to_minute') . ':00',
         'comment' => $req->request->get('comment'),
+        'repeated'=> $req->request->get('repeat') ?: null
       ];
       $db->insert("reserve", $reserve);
       return $app->redirect('/?date=' . $req->request->get('date'));
@@ -59,11 +60,58 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
     $hours[] = array('hour' => $h, 'from' => $h * 60, 'to'  => ($h + 1) * 60);
   }
 
-  $stmt = $db->pdo->prepare("SELECT reserve.*, room.name FROM reserve JOIN room on room.id = reserve.room_id WHERE dt_from >= :dt AND dt_from < DATE_ADD(:dt, INTERVAL 1 DAY) ORDER BY dt_from");
+  $stmt = $db->pdo->prepare("
+  SELECT reserve.*, room.name 
+  FROM reserve 
+  JOIN room on room.id = reserve.room_id 
+  WHERE repeated IS NULL AND dt_from >= :dt AND dt_from < DATE_ADD(:dt, INTERVAL 1 DAY) ORDER BY dt_from");
   $stmt->execute([
     'dt' => $date
   ]);
   $reserves = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+  // Каждую неделю:
+  $stmt = $db->pdo->prepare("
+  SELECT reserve.*, room.name 
+  FROM reserve 
+  JOIN room on room.id = reserve.room_id 
+  WHERE 
+    repeated = 'week' AND 
+    dt_from <= :dt AND 
+    DAYOFWEEK(dt_from) = DAYOFWEEK(:dt)");
+  $stmt->execute([
+    'dt' => $date . ' 23:59:59'
+  ]);
+  $reserves = array_merge($reserves, $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []);
+
+  // Каждый день:
+  $stmt = $db->pdo->prepare("
+  SELECT reserve.*, room.name 
+  FROM reserve 
+  JOIN room on room.id = reserve.room_id 
+  WHERE 
+    repeated = 'day' AND 
+    dt_from <= :dt
+  ");
+  $stmt->execute([
+    'dt' => $date . ' 23:59:59'
+  ]);
+  $reserves = array_merge($reserves, $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []);
+
+  // Каждый месяц:
+  $stmt = $db->pdo->prepare("
+  SELECT reserve.*, room.name 
+  FROM reserve 
+  JOIN room on room.id = reserve.room_id 
+  WHERE 
+    repeated = 'month' AND
+    DAYOFMONTH(dt_from) = DAYOFMONTH(:dt) AND
+    dt_from <= :dt
+  ");
+  $stmt->execute([
+    'dt' => $date . ' 23:59:59'
+  ]);
+  $reserves = array_merge($reserves, $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []);
 
   $days = array();
   for($d = 0; $d < count($dayNames); $d++) {
@@ -82,8 +130,9 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
     }
 
     foreach ($slots as $slot) {
-      $slot['from'] = ( strtotime($slot['dt_from']) - strtotime($date) ) / 60;
-      $slot['to']   = ( strtotime($slot['dt_to']) - strtotime($date) ) / 60;
+
+      $slot['from'] = ( strtotime($date . ' ' . date('H:i:s', strtotime($slot['dt_from']))) - strtotime($date) ) / 60;
+      $slot['to']   = ( strtotime($date . ' ' . date('H:i:s', strtotime($slot['dt_to']))) - strtotime($date) ) / 60;
 
       // На всякий случай убедимся, что это именно "свободный" слот:
       // Расчёт ширины слота (в процентах) и его левого смещения:
