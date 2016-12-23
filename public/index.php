@@ -184,12 +184,7 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
   return $view->render("index", [
     "body" => $html,
     "date" => $date,
-    "rooms" => [
-      ["id" => 1, "name" => "Большая"],
-      ["id" => 2, "name" => "У окна"],
-      ["id" => 3, "name" => "Рыцари"],
-      ["id" => 4, "name" => "HR"]
-    ],
+    "rooms" => $rooms,
     "reserves" => $reserves
   ]);
 });
