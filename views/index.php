@@ -3,6 +3,7 @@
 <head>
     <meta charset="windows-1251">
     <title>Свободные часы для занятий</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <!-- Latest compiled and minified CSS -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
@@ -33,39 +34,43 @@
                 $('[name="to_hour"]').val(parseInt($(this).val()) + 1);
             });
 
+            $('.calender-slot').popover();
         });
     </script>
 </head>
 <body>
-<div class="container">
-    <h1>
+<div class="container-fluid">
+    <h1 class="container">
+        <img src="/profi-logo.svg" />
         Переговорки
         <form action="" method="get" id="SetDate">
-            <input type="text" name="date" value="<?=$date?>" class="dtpckr" style="width:120px;"/>
+            <input type="text" name="date" value="<?=$date?>" class="dtpckr" />
         </form>
     </h1>
     <?=$body?>
-
-    <table class="table">
-        <?php foreach ($reserves as $reserve): ?>
-        <tr>
-            <td><?=$reserve['name']?></td>
-            <td><?=$reserve['dt_from']?></td>
-            <td><?=$reserve['dt_to']?></td>
-            <td><?=$reserve['repeated']?></td>
-            <td><?=$this->e($reserve['comment'])?></td>
-            <td>
-                <form action="" method="post">
-                    <input type="hidden" name="reserve_id" value="<?=$reserve['id']?>" />
-                    <input type="hidden" name="date" value="<?=$date?>" />
-                    <input type="submit" name="del" value="Удалить" class="btn btn-danger btn-xs" onclick="return confirm('Вы правда хотите удалить эту бронь?');"/>
-                </form>
-            </td>
-        </tr>
-        <?php endforeach; ?>
+    <div class="container">
+    <div style="margin:15px 0 10px 0;">
+        <button class="btn btn-default" onclick="$('#List').toggleClass('hidden');">Показать таблицу</button>
+        <button class="btn btn-success" onclick="$('#ReservePanel').toggleClass('hidden');">Забронировать переговорку</button>
+    </div>
+    <table class="table hidden" id="List">
+      <?php foreach ($reserves as $reserve): ?>
+          <tr>
+              <td><?=$reserve['name']?></td>
+              <td><?=$reserve['dt_from']?></td>
+              <td><?=$reserve['dt_to']?></td>
+              <td><?=$reserve['repeated']?></td>
+              <td><?=$this->e($reserve['comment'])?></td>
+              <td>
+                  <form action="" method="post">
+                      <input type="hidden" name="reserve_id" value="<?=$reserve['id']?>" />
+                      <input type="hidden" name="date" value="<?=$date?>" />
+                      <input type="submit" name="del" value="Удалить" class="btn btn-danger btn-xs" onclick="return confirm('Вы правда хотите удалить эту бронь?');"/>
+                  </form>
+              </td>
+          </tr>
+      <?php endforeach; ?>
     </table>
-
-    <p><button class="btn btn-success" onclick="$('#ReservePanel').toggleClass('hidden');">Забронировать переговорку</button></p>
     <div class="panel panel-default hidden" id="ReservePanel">
         <div class="panel-heading">
             <strong data-toggle="ReserveForm">Забронировать переговорку</strong>
@@ -132,6 +137,7 @@
                 <input type="submit" name="add" value="Забронировать" class="btn btn-success" />
             </form>
         </div>
+    </div>
     </div>
 </div>
 </body>

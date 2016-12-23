@@ -164,7 +164,7 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
     if( ($k + 1) % 2 == 0) {
       $html .= '<div class="calender-hour">&nbsp;</div>';
     } else {
-      $html .= '<div class="calender-hour"><span>'.$hours[$k]['hour'].'</span></div>';
+      $html .= '<div class="calender-hour"><span>'.$hours[$k]['hour'].'<sup>00</sup></span></div>';
     }
   }
   // Последний час надо врисовать в его "предшественника":
@@ -175,7 +175,9 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
       '<div class="calendar-day">' .
       '<div class="calendar-dayname">'. $day['name'] .'</div>';
     $html .= str_repeat('<div class="calender-hour"></div>', count($hours));
-    foreach($day['slots'] as $slot) { $html .= '<div class="calender-slot" style="left:'.$slot['left'].'%; width:'.$slot['width'].'%" title="'.$slot['title'].'"></div>'; }
+    foreach($day['slots'] as $slot) {
+      $html .= sprintf('<div class="calender-slot" style="left:%s%%; width:%s%%" title="%s" data-toggle="popover" data-placement="bottom" data-trigger="hover" data-content="%s"></div>',$slot['left'], $slot['width'], $slot['title'], $slot['comment']);
+    }
     $html .= '</div>';
   }
   $html .= '</div>';
