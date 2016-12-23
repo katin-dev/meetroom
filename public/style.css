@@ -1,5 +1,5 @@
 .calendar {
-    margin-left:80px;
+    margin-left:132px;
 }
 .calendar-txt-success {
     color:#60C35F;
@@ -57,14 +57,12 @@
 .calendar-dayname {
     position: absolute;
     height:64px;
-    width:80px;
-    left:-80px;
+    width:132px;
+    left:-132px;
     border-bottom:1px solid #CDD4DD;
     border-right:1px solid #CDD4DD;
     color:#789;
     font-weight: bold;
-    line-height: 64px;
-    text-align: right;
     padding-right: 1em;
 }
 .calendar-day-head .calendar-dayname {

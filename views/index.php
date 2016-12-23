@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="windows-1251">
-    <title>Свободные часы для занятий</title>
+    <title>Переговорки</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <!-- Latest compiled and minified CSS -->
