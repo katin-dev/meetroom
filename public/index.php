@@ -114,10 +114,11 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
   $reserves = array_merge($reserves, $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []);
 
   $days = array();
-  for($d = 0; $d < count($dayNames); $d++) {
+  for($d = 0; $d < count($rooms); $d++) {
     $day = [
-      'name'     => $dayNames[$d],
-      'fullname' => $fullDayNames[$d],
+      'id'       => $rooms[$d]['id'],
+      'name'     => $rooms[$d]['name'],
+      'fullname' => $rooms[$d]['name'],
       'hours'    => array(),
       'slots'    => array()
     ];
@@ -173,8 +174,10 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
   foreach($days as $day) {
     $html .=
       '<div class="calendar-day">' .
-      '<div class="calendar-dayname">'. $day['name'] .'</div>';
-    $html .= str_repeat('<div class="calender-hour"></div>', count($hours));
+      '<div class="calendar-dayname" data-id="'.$day['id'].'">'. $day['name'] .'</div>';
+    foreach ($hours as $hour) {
+      $html .= '<div class="calender-hour" data-hour="'.$hour['hour'].'"></div>';
+    }
     foreach($day['slots'] as $slot) {
       $html .= sprintf('<div class="calender-slot" style="left:%s%%; width:%s%%" title="%s" data-toggle="popover" data-placement="bottom" data-trigger="hover" data-content="%s"></div>',$slot['left'], $slot['width'], $slot['title'], $slot['comment']);
     }

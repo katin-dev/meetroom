@@ -35,6 +35,17 @@
             });
 
             $('.calender-slot').popover();
+            $('.calender-hour').click(function () {
+                var slot = $(this),
+                    room_id = slot.siblings('.calendar-dayname').data('id'),
+                    hour = parseInt(slot.data('hour')),
+                    modal = $('#ReserveModal');
+
+                modal.find('[name="room_id"]').val(room_id);
+                modal.find('[name="from_hour"]').val(hour);
+                modal.find('[name="to_hour"]').val(hour + 1);
+                modal.modal('show');
+            });
         });
     </script>
 </head>
@@ -51,7 +62,6 @@
     <div class="container">
     <div style="margin:15px 0 10px 0;">
         <button class="btn btn-default" onclick="$('#List').toggleClass('hidden');">Показать таблицу</button>
-        <button class="btn btn-success" onclick="$('#ReservePanel').toggleClass('hidden');">Забронировать переговорку</button>
     </div>
     <table class="table hidden" id="List">
       <?php foreach ($reserves as $reserve): ?>
@@ -71,73 +81,80 @@
           </tr>
       <?php endforeach; ?>
     </table>
-    <div class="panel panel-default hidden" id="ReservePanel">
-        <div class="panel-heading">
-            <strong data-toggle="ReserveForm">Забронировать переговорку</strong>
-        </div>
-        <div class="panel-body" id="ReserveForm">
-            <form action="" method="post">
-                <div class="form-group">
-                    <label>Какую?</label>
-                    <select name="room_id" class="form-control">
-                      <?php foreach ($rooms as $room): ?>
-                          <option value="<?=$room['id']?>"><?=$this->e($room['name'])?></option>
-                      <?php endforeach; ?>
-                    </select>
+    <div class="modal fade" tabindex="-1" id="ReserveModal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form action="" method="post">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Забронировать переговорку</h4>
                 </div>
-                <div class="form-inline">
-                    <div class="form-group">
-                        <label>Когда?</label>
-                        <input type="text" value="<?=$date?>" class="dtpckr" name="date" style="width:85px;"/>
-                        С
-                        <select name="from_hour">
-                          <?php
-                            echo implode("\n", array_map(function ($h) {
-                              return sprintf('<option value="%s">%02d</option>', $h, $h);
-                            }, range(7, 23)));
-                          ?>
-                        </select>
-                        <select name="from_minute">
-                          <?php for($m = 0; $m < 60; $m += 5): ?>
-                            <option value="<?=$m?>"><?=sprintf('%02d', $m)?></option>
-                          <?php endfor ?>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        до
-                        <select name="to_hour">
-                        <?php
-                        echo implode("\n", array_map(function ($h) {
-                          return sprintf('<option value="%s">%02d</option>', $h, $h);
-                        }, range(7, 23)));
-                        ?>
-                        </select>
-                        <select name="to_minute">
-                          <?php for($m = 0; $m < 60; $m += 5): ?>
-                              <option value="<?=$m?>"><?=sprintf('%02d', $m)?></option>
-                          <?php endfor ?>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        Повторять:
-                        <select name="repeat">
-                            <option value="">-</option>
-                            <option value="day">Каждый день</option>
-                            <option value="week">Каждую неделю</option>
-                            <option value="month">Каждый месяц</option>
-                        </select>
-                    </div>
+                <div class="modal-body">
+                        <div class="form-group">
+                            <label>Какую?</label>
+                            <select name="room_id" class="form-control">
+                              <?php foreach ($rooms as $room): ?>
+                                  <option value="<?=$room['id']?>"><?=$this->e($room['name'])?></option>
+                              <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="form-inline">
+                            <div class="form-group">
+                                <label>Когда?</label>
+                                <input type="text" value="<?=$date?>" class="dtpckr" name="date" style="width:85px;"/>
+                                С
+                                <select name="from_hour">
+                                  <?php
+                                  echo implode("\n", array_map(function ($h) {
+                                    return sprintf('<option value="%s">%02d</option>', $h, $h);
+                                  }, range(7, 23)));
+                                  ?>
+                                </select>
+                                <select name="from_minute">
+                                  <?php for($m = 0; $m < 60; $m += 5): ?>
+                                      <option value="<?=$m?>"><?=sprintf('%02d', $m)?></option>
+                                  <?php endfor ?>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                до
+                                <select name="to_hour">
+                                  <?php
+                                  echo implode("\n", array_map(function ($h) {
+                                    return sprintf('<option value="%s">%02d</option>', $h, $h);
+                                  }, range(7, 23)));
+                                  ?>
+                                </select>
+                                <select name="to_minute">
+                                  <?php for($m = 0; $m < 60; $m += 5): ?>
+                                      <option value="<?=$m?>"><?=sprintf('%02d', $m)?></option>
+                                  <?php endfor ?>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                Повторять:
+                                <select name="repeat">
+                                    <option value="">-</option>
+                                    <option value="day">Каждый день</option>
+                                    <option value="week">Каждую неделю</option>
+                                    <option value="month">Каждый месяц</option>
+                                </select>
+                            </div>
+                        </div>
+                        <p></p>
+                        <div class="form-group">
+                            <label>Комментарий</label>
+                            <textarea name="comment" class="form-control"></textarea>
+                        </div>
                 </div>
-                <p></p>
-                <div class="form-group">
-                    <label>Комментарий</label>
-                    <textarea name="comment" class="form-control"></textarea>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Забронировать</button>
                 </div>
-
-                <input type="submit" name="add" value="Забронировать" class="btn btn-success" />
-            </form>
-        </div>
-    </div>
+                </form>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
     </div>
 </div>
 </body>

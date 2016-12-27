@@ -32,6 +32,9 @@
     height:100%;
     color:#789;
 }
+.calender-hour:hover {
+    background-color: rgba(205, 212, 221, 0.5);
+}
 
 .calendar-day-head , .calendar-day-head > div {
     height: 24px;
