@@ -62,6 +62,7 @@
     <div class="container">
     <div style="margin:15px 0 10px 0;">
         <button class="btn btn-default" onclick="$('#List').toggleClass('hidden');">Показать таблицу</button>
+        <a href="/google-calendar/" class="btn btn-default">Привязать Google Calendar</a>
     </div>
     <table class="table hidden" id="List">
       <?php foreach ($reserves as $reserve): ?>

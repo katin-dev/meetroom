@@ -1,5 +1,7 @@
 <?php
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 
 define('_APP_', realpath(__DIR__ . '/../app'));
 require_once __DIR__.'/../vendor/autoload.php';
@@ -7,6 +9,7 @@ $config = require_once _APP_ . '/config.php';
 
 /* @var $app Silex\Application */
 $app = new Silex\Application();
+$app['debug'] = true;
 
 $view = new League\Plates\Engine(__DIR__ . '/../views');
 $db = new medoo([
@@ -190,6 +193,61 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
     "rooms" => $rooms,
     "reserves" => $reserves
   ]);
+});
+
+$app->get('/google-calendar/', function (Request $req) use ($app, $view) {
+
+  $client = new Google_Client([
+    'application_name' => 'Google Calendar API PHP Quickstart',
+    'access_type' => 'online',
+    'redirect_uri' => 'http://' . $req->getHttpHost() . '/google-calendar/'
+  ]);
+  $client->addScope(Google_Service_Calendar::CALENDAR_READONLY);
+  $client->setAuthConfig(__DIR__ . '/../client_secret_web.json');
+
+  // Load previously authorized credentials from a file.
+  $credentialsPath = __DIR__ . '/../calendar-php-quickstart.json';
+  if (file_exists($credentialsPath)) {
+    $accessToken = json_decode(file_get_contents($credentialsPath), true);
+  } else {
+    if($req->get('code')) {
+      $accessToken = $client->fetchAccessTokenWithAuthCode($req->get('code'));
+      file_put_contents($credentialsPath, json_encode($accessToken));
+      return new RedirectResponse('/google-calendar/');
+    } else {
+      return new RedirectResponse($client->createAuthUrl());
+    }
+  }
+
+  $client->setAccessToken($accessToken);
+
+  // Refresh the token if it's expired.
+  if ($client->isAccessTokenExpired()) {
+    $client->fetchAccessTokenWithRefreshToken($client->getRefreshToken());
+    file_put_contents($credentialsPath, json_encode($client->getAccessToken()));
+  }
+
+  $service = new Google_Service_Calendar($client);
+
+  // Print the next 10 events on the user's calendar.
+  $dt = new DateTime(date('Y-m-d 00:00:00'));
+  $list = $service->calendarList->listCalendarList();
+  $events = array();
+  foreach ($list as $calendar) {
+    print $calendar->id."\n";
+    $events = $service->events->listEvents($calendar->id, array(
+      'maxResults' => 999,
+      'orderBy' => 'startTime',
+      'singleEvents' => TRUE,
+      'timeMin' => $dt->format('c'),
+      'timeMax' => $dt->add(new DateInterval('P1D'))->format('c'),
+    ));
+
+    return $view->render('google_calendar', [
+      'events' => $events
+    ]);
+  }
+
 });
 
 $app->run();
