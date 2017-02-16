@@ -195,7 +195,7 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
   ]);
 });
 
-$app->get('/google-calendar/', function (Request $req) use ($app, $view) {
+$app->match('/google-calendar/', function (Request $req) use ($app, $view) {
 
   $client = new Google_Client([
     'application_name' => 'Google Calendar API PHP Quickstart',
@@ -207,24 +207,40 @@ $app->get('/google-calendar/', function (Request $req) use ($app, $view) {
 
   // Load previously authorized credentials from a file.
   $credentialsPath = __DIR__ . '/../calendar-php-quickstart.json';
+  $meetroomsPath = __DIR__ . '/../meetrooms.json';
+
+  if($req->get('code')) {
+    $accessToken = $client->fetchAccessTokenWithAuthCode($req->get('code'));
+    file_put_contents($credentialsPath, json_encode($accessToken));
+    return new RedirectResponse('/google-calendar/');
+  }
+
+  if($req->getMethod() == 'POST') {
+    $calendars = $req->request->get('calendar');
+    file_put_contents($meetroomsPath, json_encode($calendars));
+    return new RedirectResponse('/google-calendar/');
+  }
+
   if (file_exists($credentialsPath)) {
     $accessToken = json_decode(file_get_contents($credentialsPath), true);
   } else {
-    if($req->get('code')) {
-      $accessToken = $client->fetchAccessTokenWithAuthCode($req->get('code'));
-      file_put_contents($credentialsPath, json_encode($accessToken));
-      return new RedirectResponse('/google-calendar/');
-    } else {
-      return new RedirectResponse($client->createAuthUrl());
-    }
+    return new RedirectResponse($client->createAuthUrl());
   }
 
   $client->setAccessToken($accessToken);
 
   // Refresh the token if it's expired.
   if ($client->isAccessTokenExpired()) {
-    $client->fetchAccessTokenWithRefreshToken($client->getRefreshToken());
-    file_put_contents($credentialsPath, json_encode($client->getAccessToken()));
+    $refreshTokenSaved = $client->getRefreshToken();
+    if($refreshTokenSaved) {
+      $client->fetchAccessTokenWithRefreshToken($refreshTokenSaved);
+      $accessTokenUpdated = $client->getAccessToken();
+      $accessTokenUpdated['refresh_token'] = $refreshTokenSaved;
+
+      file_put_contents($credentialsPath, json_encode($accessTokenUpdated));
+    } else {
+      return new RedirectResponse($client->createAuthUrl());
+    }
   }
 
   $service = new Google_Service_Calendar($client);
@@ -232,22 +248,29 @@ $app->get('/google-calendar/', function (Request $req) use ($app, $view) {
   // Print the next 10 events on the user's calendar.
   $dt = new DateTime(date('Y-m-d 00:00:00'));
   $list = $service->calendarList->listCalendarList();
+  $meetrooms = json_decode(file_exists($meetroomsPath) ? file_get_contents($meetroomsPath) : '[]');
   $events = array();
   foreach ($list as $calendar) {
-    print $calendar->id."\n";
-    $events = $service->events->listEvents($calendar->id, array(
-      'maxResults' => 999,
-      'orderBy' => 'startTime',
-      'singleEvents' => TRUE,
-      'timeMin' => $dt->format('c'),
-      'timeMax' => $dt->add(new DateInterval('P1D'))->format('c'),
-    ));
+    if(in_array($calendar->id, $meetrooms)) {
+      $events = $service->events->listEvents($calendar->id, array(
+        'maxResults' => 999,
+        'orderBy' => 'startTime',
+        'singleEvents' => TRUE,
+        'timeMin' => $dt->format('c'),
+        'timeMax' => $dt->add(new DateInterval('P1D'))->format('c'),
+      ));
+    }
+  }
 
-    return $view->render('google_calendar', [
+  if(empty($meetrooms) && $list->count()) {
+    return $view->render('google_calendar_select', [
+      'calendars' => $list
+    ]);
+  } else {
+    return $view->render('google_calendar_events', [
       'events' => $events
     ]);
   }
-
 });
 
 $app->run();
