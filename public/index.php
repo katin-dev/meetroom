@@ -11,7 +11,7 @@ $app = new Silex\Application();
 $app['debug'] = true;
 
 $view = new League\Plates\Engine(__DIR__ . '/../views');
-$db = new medoo([
+$db = new \Medoo\Medoo([
   // required
   'database_type' => 'mysql',
   'database_name' => $config['db']['dbname'],
