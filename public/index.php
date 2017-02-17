@@ -79,8 +79,8 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
 
   $client = new Google_Client([
     'application_name' => 'Google Calendar API PHP Quickstart',
-    'access_type' => 'online',
-    'redirect_uri' => 'http://' . $req->getHttpHost() . '/google-calendar/'
+    'access_type'      => 'offline',
+    'redirect_uri'     => 'http://' . $req->getHttpHost() . '/google-calendar/'
   ]);
   $client->addScope(Google_Service_Calendar::CALENDAR_READONLY);
   $client->setAuthConfig(__DIR__ . '/../data/client_secret_web.json');
@@ -99,16 +99,9 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
 
   // Refresh the token if it's expired.
   if ($client->isAccessTokenExpired()) {
-    $refreshTokenSaved = $client->getRefreshToken();
-    if($refreshTokenSaved) {
-      $client->fetchAccessTokenWithRefreshToken($refreshTokenSaved);
-      $accessTokenUpdated = $client->getAccessToken();
-      $accessTokenUpdated['refresh_token'] = $refreshTokenSaved;
-
-      file_put_contents($credentialsPath, json_encode($accessTokenUpdated));
-    } else {
-      return new RedirectResponse($client->createAuthUrl());
-    }
+    $accessToken = $client->fetchAccessTokenWithRefreshToken($client->getRefreshToken());
+    $client->setAccessToken($accessToken);
+    file_put_contents($credentialsPath, json_encode($accessToken));
   }
 
   $service = new Google_Service_Calendar($client);
@@ -285,7 +278,7 @@ $app->match('/google-calendar/', function (Request $req) use ($app, $view) {
   if($req->getMethod() == 'POST') {
     $calendars = $req->request->get('calendar');
     file_put_contents($meetroomsPath, json_encode($calendars));
-    return new RedirectResponse('/google-calendar/');
+    return new RedirectResponse('/');
   }
 
   if (file_exists($credentialsPath)) {
