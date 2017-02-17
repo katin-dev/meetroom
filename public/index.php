@@ -49,7 +49,7 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
   /*$stmt = $db->query("SELECT * FROM room ORDER BY name");
   $rooms = $stmt->fetchAll(\PDO::FETCH_ASSOC);*/
 
-  $meetroomsPath = __DIR__ . '/../meetrooms.json';
+  $meetroomsPath = __DIR__ . '/../data/meetrooms.json';
   $rooms = json_decode(file_exists($meetroomsPath) ? file_get_contents($meetroomsPath) : '[]');
 
   /*$dayNames = array_map(function ($room) {
@@ -87,8 +87,8 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
   $client->setAuthConfig(__DIR__ . '/../client_secret_web.json');
 
   // Load previously authorized credentials from a file.
-  $credentialsPath = __DIR__ . '/../calendar-php-quickstart.json';
-  $meetroomsPath = __DIR__ . '/../meetrooms.json';
+  $credentialsPath = __DIR__ . '/../data/calendar-php-quickstart.json';
+  $meetroomsPath = __DIR__ . '/../data/meetrooms.json';
 
   if (file_exists($credentialsPath)) {
     $accessToken = json_decode(file_get_contents($credentialsPath), true);
@@ -270,8 +270,8 @@ $app->match('/google-calendar/', function (Request $req) use ($app, $view) {
   $client->setAuthConfig(__DIR__ . '/../client_secret_web.json');
 
   // Load previously authorized credentials from a file.
-  $credentialsPath = __DIR__ . '/../calendar-php-quickstart.json';
-  $meetroomsPath = __DIR__ . '/../meetrooms.json';
+  $credentialsPath = __DIR__ . '/../data/calendar-php-quickstart.json';
+  $meetroomsPath = __DIR__ . '/../data/meetrooms.json';
 
   if($req->get('code')) {
     $accessToken = $client->fetchAccessTokenWithAuthCode($req->get('code'));
