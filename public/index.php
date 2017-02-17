@@ -84,7 +84,7 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
     'redirect_uri' => 'http://' . $req->getHttpHost() . '/google-calendar/'
   ]);
   $client->addScope(Google_Service_Calendar::CALENDAR_READONLY);
-  $client->setAuthConfig(__DIR__ . '/../client_secret_web.json');
+  $client->setAuthConfig(__DIR__ . '/../data/client_secret_web.json');
 
   // Load previously authorized credentials from a file.
   $credentialsPath = __DIR__ . '/../data/calendar-php-quickstart.json';
@@ -267,7 +267,7 @@ $app->match('/google-calendar/', function (Request $req) use ($app, $view) {
     'redirect_uri' => 'http://' . $req->getHttpHost() . '/google-calendar/'
   ]);
   $client->addScope(Google_Service_Calendar::CALENDAR_READONLY);
-  $client->setAuthConfig(__DIR__ . '/../client_secret_web.json');
+  $client->setAuthConfig(__DIR__ . '/../data/client_secret_web.json');
 
   // Load previously authorized credentials from a file.
   $credentialsPath = __DIR__ . '/../data/calendar-php-quickstart.json';
