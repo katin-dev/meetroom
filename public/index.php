@@ -50,12 +50,11 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
   $rooms = $stmt->fetchAll(\PDO::FETCH_ASSOC);*/
 
   $meetroomsPath = __DIR__ . '/../data/meetrooms.json';
-  $rooms = json_decode(file_exists($meetroomsPath) ? file_get_contents($meetroomsPath) : '[]');
+  $dayNames = json_decode(file_exists($meetroomsPath) ? file_get_contents($meetroomsPath) : '[]');
 
   /*$dayNames = array_map(function ($room) {
     return $room['name'];
   }, $rooms);*/
-  $dayNames = $rooms;
 
   $fullDayNames = $dayNames;
   $hourMin      = 7;
@@ -117,7 +116,11 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
   $list = $service->calendarList->listCalendarList();
   $reserves = array();
   foreach ($list as $calendar) {
-    if(in_array($calendar->id, $rooms)) {
+    if(($key = array_search($calendar->id, $dayNames)) !== false) {
+      $rooms[$key] = isset($rooms[$calendar->id]) ? $rooms[$calendar->id] : [
+        'id' => $calendar->id,
+        'name' => $calendar->summary ?: $calendar->id
+      ];
       $events = $service->events->listEvents($calendar->id, array(
         'maxResults' => 999,
         'orderBy' => 'startTime',
@@ -183,16 +186,16 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
   $days = array();
   for($d = 0; $d < count($rooms); $d++) {
     $day = [
-      'id'       => $rooms[$d],
-      'name'     => $rooms[$d],
-      'fullname' => $rooms[$d],
+      'id'       => $rooms[$d]['id'],
+      'name'     => $rooms[$d]['name'],
+      'fullname' => $rooms[$d]['name'],
       'hours'    => array(),
       'slots'    => array()
     ];
 
     $slots = [];
     foreach ($reserves as $reserve) {
-      if($reserve['room_id'] == $rooms[$d]) {
+      if($reserve['room_id'] == $rooms[$d]['id']) {
         $slots[] = $reserve;
       }
     }
@@ -213,7 +216,7 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
       $fromMinute = $slot['from'] - $fromHour * 60;
       $toHour     = floor($slot['to'] / 60);
       $toMinute   = $slot['to'] - $toHour * 60;
-      $slot['title'] = $fullDayNames[$d] . ' с ' . date('H:i', mktime($fromHour, $fromMinute)) . ' до ' . date('H:i', mktime($toHour, $toMinute));
+      $slot['title'] = $rooms[$d]['name'] . ' с ' . date('H:i', mktime($fromHour, $fromMinute)) . ' до ' . date('H:i', mktime($toHour, $toMinute));
 
       $day['slots'][] = $slot;
     }
