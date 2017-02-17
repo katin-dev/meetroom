@@ -1,6 +1,5 @@
 <?php
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
 define('_APP_', realpath(__DIR__ . '/../app'));
@@ -45,12 +44,18 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
     }
   }
 
-  $stmt = $db->query("SELECT * FROM room ORDER BY name");
-  $rooms = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
-  $dayNames = array_map(function ($room) {
+
+  /*$stmt = $db->query("SELECT * FROM room ORDER BY name");
+  $rooms = $stmt->fetchAll(\PDO::FETCH_ASSOC);*/
+
+  $meetroomsPath = __DIR__ . '/../meetrooms.json';
+  $rooms = json_decode(file_exists($meetroomsPath) ? file_get_contents($meetroomsPath) : '[]');
+
+  /*$dayNames = array_map(function ($room) {
     return $room['name'];
-  }, $rooms);
+  }, $rooms);*/
+  $dayNames = $rooms;
 
   $fullDayNames = $dayNames;
   $hourMin      = 7;
@@ -63,7 +68,7 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
     $hours[] = array('hour' => $h, 'from' => $h * 60, 'to'  => ($h + 1) * 60);
   }
 
-  $stmt = $db->pdo->prepare("
+  /*$stmt = $db->pdo->prepare("
   SELECT reserve.*, room.name 
   FROM reserve 
   JOIN room on room.id = reserve.room_id 
@@ -71,9 +76,68 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
   $stmt->execute([
     'dt' => $date
   ]);
-  $reserves = $stmt->fetchAll(PDO::FETCH_ASSOC);
+  $reserves = $stmt->fetchAll(PDO::FETCH_ASSOC);*/
 
-  // Каждую неделю:
+  $client = new Google_Client([
+    'application_name' => 'Google Calendar API PHP Quickstart',
+    'access_type' => 'online',
+    'redirect_uri' => 'http://' . $req->getHttpHost() . '/google-calendar/'
+  ]);
+  $client->addScope(Google_Service_Calendar::CALENDAR_READONLY);
+  $client->setAuthConfig(__DIR__ . '/../client_secret_web.json');
+
+  // Load previously authorized credentials from a file.
+  $credentialsPath = __DIR__ . '/../calendar-php-quickstart.json';
+  $meetroomsPath = __DIR__ . '/../meetrooms.json';
+
+  if (file_exists($credentialsPath)) {
+    $accessToken = json_decode(file_get_contents($credentialsPath), true);
+  } else {
+    return new RedirectResponse($client->createAuthUrl());
+  }
+
+  $client->setAccessToken($accessToken);
+
+  // Refresh the token if it's expired.
+  if ($client->isAccessTokenExpired()) {
+    $refreshTokenSaved = $client->getRefreshToken();
+    if($refreshTokenSaved) {
+      $client->fetchAccessTokenWithRefreshToken($refreshTokenSaved);
+      $accessTokenUpdated = $client->getAccessToken();
+      $accessTokenUpdated['refresh_token'] = $refreshTokenSaved;
+
+      file_put_contents($credentialsPath, json_encode($accessTokenUpdated));
+    } else {
+      return new RedirectResponse($client->createAuthUrl());
+    }
+  }
+
+  $service = new Google_Service_Calendar($client);
+  $dt = new DateTime($date);
+  $list = $service->calendarList->listCalendarList();
+  $reserves = array();
+  foreach ($list as $calendar) {
+    if(in_array($calendar->id, $rooms)) {
+      $events = $service->events->listEvents($calendar->id, array(
+        'maxResults' => 999,
+        'orderBy' => 'startTime',
+        'singleEvents' => TRUE,
+        'timeMin' => $dt->format('c'),
+        'timeMax' => $dt->add(new DateInterval('P1D'))->format('c'),
+      ));
+      foreach ($events as $event) {
+        $reserves[] = [
+          'room_id' => $calendar->id,
+          'dt_from' => $event->start->dateTime,
+          'dt_to'   => $event->end->dateTime,
+          'comment' => $event->summary
+        ];
+      }
+    }
+  }
+
+
+  /*// Каждую неделю:
   $stmt = $db->pdo->prepare("
   SELECT reserve.*, room.name 
   FROM reserve 
@@ -114,21 +178,21 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
   $stmt->execute([
     'dt' => $date . ' 23:59:59'
   ]);
-  $reserves = array_merge($reserves, $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []);
+  $reserves = array_merge($reserves, $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []);*/
 
   $days = array();
   for($d = 0; $d < count($rooms); $d++) {
     $day = [
-      'id'       => $rooms[$d]['id'],
-      'name'     => $rooms[$d]['name'],
-      'fullname' => $rooms[$d]['name'],
+      'id'       => $rooms[$d],
+      'name'     => $rooms[$d],
+      'fullname' => $rooms[$d],
       'hours'    => array(),
       'slots'    => array()
     ];
 
     $slots = [];
     foreach ($reserves as $reserve) {
-      if($reserve['room_id'] == $rooms[$d]['id']) {
+      if($reserve['room_id'] == $rooms[$d]) {
         $slots[] = $reserve;
       }
     }
