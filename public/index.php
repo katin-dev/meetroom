@@ -105,7 +105,6 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
   }
 
   $service = new Google_Service_Calendar($client);
-  $dt = new DateTime($date);
   $list = $service->calendarList->listCalendarList();
   $reserves = array();
   foreach ($list as $calendar) {
@@ -114,6 +113,7 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
         'id' => $calendar->id,
         'name' => $calendar->summary ?: $calendar->id
       ];
+      $dt = new DateTime($date);
       $events = $service->events->listEvents($calendar->id, array(
         'maxResults' => 999,
         'orderBy' => 'startTime',
