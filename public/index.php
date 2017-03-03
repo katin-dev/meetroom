@@ -2,196 +2,88 @@
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
-define('_APP_', realpath(__DIR__ . '/../app'));
+define('_APP_', realpath(__DIR__ . '/../App'));
 require_once __DIR__.'/../vendor/autoload.php';
 $config = require_once _APP_ . '/config.php';
 
 /* @var $app Silex\Application */
 $app = new Silex\Application();
+$app['config'] = $config;
 $app['debug'] = true;
+$app['view'] = function () {
+  return new League\Plates\Engine(__DIR__ . '/../views');
+};
+$app['client'] = function ($app) {
 
-$view = new League\Plates\Engine(__DIR__ . '/../views');
-$db = new \Medoo\Medoo([
-  // required
-  'database_type' => 'mysql',
-  'database_name' => $config['db']['dbname'],
-  'server'        => $config['db']['host'],
-  'username'      => $config['db']['username'],
-  'password'      => $config['db']['password'],
-  'charset'       => 'utf8'
-]);
+  // Fetch data from google calendar
+  $client = new Google_Client([
+    'application_name' => $app['config']['google']['app_name'],
+    'access_type'      => 'offline'
+  ]);
+  $client->addScope(Google_Service_Calendar::CALENDAR_READONLY);
+  $client->setAuthConfig($app['config']['storage']['app_secret']);
+  $credentialsPath = $app['config']['storage']['app_credentials'];
 
-$app->match('/', function (Request $req) use ($app, $view, $db) {
+  if (file_exists($credentialsPath)) {
+
+    $accessToken = json_decode(file_get_contents($credentialsPath), true);
+    $client->setAccessToken($accessToken);
+
+    // Refresh the token if it's expired.
+    if ($client->isAccessTokenExpired()) {
+      $accessToken = $client->fetchAccessTokenWithRefreshToken($client->getRefreshToken());
+      $client->setAccessToken($accessToken);
+      file_put_contents($credentialsPath, json_encode($accessToken));
+    }
+  }
+  return $client;
+};
+
+$app->match('/', function (Request $req, Silex\Application $app) {
 
   $date = $req->get('date', date('Y-m-d'));
 
-  // Сохранение новой брони:
-  if($req->getMethod() == 'POST') {
+  // Load chosen calendars
+  $calendarsFilename = $app['config']['storage']['calendars'];
+  $calendars = json_decode(file_exists($calendarsFilename) ? file_get_contents($calendarsFilename) : '[]');
 
-    if($req->request->get('del')) {
-      $db->delete("reserve", ["id" => $req->request->get("reserve_id")]);
-      return $app->redirect('/?date=' . $req->request->get('date'));
-    } else {
-      $reserve = [
-        'room_id' => $req->request->get('room_id'),
-        'dt_from' => $req->request->get('date') . ' ' . $req->request->get('from_hour') . ':' . $req->request->get('from_minute') . ':00',
-        'dt_to'   => $req->request->get('date') . ' ' . $req->request->get('to_hour') . ':' . $req->request->get('to_minute') . ':00',
-        'comment' => $req->request->get('comment'),
-        'repeated'=> $req->request->get('repeat') ?: null
-      ];
-      $db->insert("reserve", $reserve);
-      return $app->redirect('/?date=' . $req->request->get('date'));
-    }
-  }
+  $hourMin = $app['config']['hours']['min'];
+  $hourMax = $app['config']['hours']['max'];
 
-
-
-  /*$stmt = $db->query("SELECT * FROM room ORDER BY name");
-  $rooms = $stmt->fetchAll(\PDO::FETCH_ASSOC);*/
-
-  $meetroomsPath = __DIR__ . '/../data/meetrooms.json';
-  $dayNames = json_decode(file_exists($meetroomsPath) ? file_get_contents($meetroomsPath) : '[]');
-
-  /*$dayNames = array_map(function ($room) {
-    return $room['name'];
-  }, $rooms);*/
-
-  $fullDayNames = $dayNames;
-  $hourMin      = 7;
-  $hourMax      = 23;
-  $dayStart     = $hourMin * 60;
-  $dayLength    = $hourMax * 60 - $dayStart;
-
-  $hours = array();
+  // Make hours grid
+  $hours   = array();
   for($h = $hourMin; $h < $hourMax; $h ++) {
     $hours[] = array('hour' => $h, 'from' => $h * 60, 'to'  => ($h + 1) * 60);
   }
 
-  /*$stmt = $db->pdo->prepare("
-  SELECT reserve.*, room.name 
-  FROM reserve 
-  JOIN room on room.id = reserve.room_id 
-  WHERE repeated IS NULL AND dt_from >= :dt AND dt_from < DATE_ADD(:dt, INTERVAL 1 DAY) ORDER BY dt_from");
-  $stmt->execute([
-    'dt' => $date
-  ]);
-  $reserves = $stmt->fetchAll(PDO::FETCH_ASSOC);*/
-
-  $client = new Google_Client([
-    'application_name' => 'Google Calendar API PHP Quickstart',
-    'access_type'      => 'offline',
-    'redirect_uri'     => 'http://' . $req->getHttpHost() . '/google-calendar/'
-  ]);
-  $client->addScope(Google_Service_Calendar::CALENDAR_READONLY);
-  $client->setAuthConfig(__DIR__ . '/../data/client_secret_web.json');
-
-  // Load previously authorized credentials from a file.
-  $credentialsPath = __DIR__ . '/../data/calendar-php-quickstart.json';
-  $meetroomsPath = __DIR__ . '/../data/meetrooms.json';
-
-  if (file_exists($credentialsPath)) {
-    $accessToken = json_decode(file_get_contents($credentialsPath), true);
-  } else {
+  /* @var $client Google_Client */
+  $client = $app['client'];
+  $client->setRedirectUri('http://' . $req->getHttpHost() . '/google-calendar/');
+  if( !$client->getAccessToken() ) {
     return new RedirectResponse($client->createAuthUrl());
   }
 
-  $client->setAccessToken($accessToken);
+  $service = new \App\Model\Service($client);
+  $service->setActiveCalendars($calendars);
+  $events = $service->getEventsFor($date);
 
-  // Refresh the token if it's expired.
-  if ($client->isAccessTokenExpired()) {
-    $accessToken = $client->fetchAccessTokenWithRefreshToken($client->getRefreshToken());
-    $client->setAccessToken($accessToken);
-    file_put_contents($credentialsPath, json_encode($accessToken));
-  }
-
-  $service = new Google_Service_Calendar($client);
-  $list = $service->calendarList->listCalendarList();
-  $reserves = array();
-  foreach ($list as $calendar) {
-    if(($key = array_search($calendar->id, $dayNames)) !== false) {
-      $rooms[$key] = isset($rooms[$calendar->id]) ? $rooms[$calendar->id] : [
-        'id' => $calendar->id,
-        'name' => $calendar->summary ?: $calendar->id
-      ];
-      $dt = new DateTime($date);
-      $events = $service->events->listEvents($calendar->id, array(
-        'maxResults' => 999,
-        'orderBy' => 'startTime',
-        'singleEvents' => TRUE,
-        'timeMin' => $dt->format('c'),
-        'timeMax' => $dt->add(new DateInterval('P1D'))->format('c'),
-      ));
-      foreach ($events as $event) {
-        $reserves[] = [
-          'room_id' => $calendar->id,
-          'dt_from' => $event->start->dateTime,
-          'dt_to'   => $event->end->dateTime,
-          'comment' => $event->summary
-        ];
-      }
-    }
-  }
-
-
-  /*// Каждую неделю:
-  $stmt = $db->pdo->prepare("
-  SELECT reserve.*, room.name 
-  FROM reserve 
-  JOIN room on room.id = reserve.room_id 
-  WHERE 
-    repeated = 'week' AND 
-    dt_from <= :dt AND 
-    DAYOFWEEK(dt_from) = DAYOFWEEK(:dt)");
-  $stmt->execute([
-    'dt' => $date . ' 23:59:59'
-  ]);
-  $reserves = array_merge($reserves, $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []);
-
-  // Каждый день:
-  $stmt = $db->pdo->prepare("
-  SELECT reserve.*, room.name 
-  FROM reserve 
-  JOIN room on room.id = reserve.room_id 
-  WHERE 
-    repeated = 'day' AND 
-    dt_from <= :dt
-  ");
-  $stmt->execute([
-    'dt' => $date . ' 23:59:59'
-  ]);
-  $reserves = array_merge($reserves, $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []);
-
-  // Каждый месяц:
-  $stmt = $db->pdo->prepare("
-  SELECT reserve.*, room.name 
-  FROM reserve 
-  JOIN room on room.id = reserve.room_id 
-  WHERE 
-    repeated = 'month' AND
-    DAYOFMONTH(dt_from) = DAYOFMONTH(:dt) AND
-    dt_from <= :dt
-  ");
-  $stmt->execute([
-    'dt' => $date . ' 23:59:59'
-  ]);
-  $reserves = array_merge($reserves, $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []);*/
-
+  $dayStart = $hourMin * 60;
+  $dayLength = $hourMax * 60 - $dayStart;
+  $rooms = $service->getRooms();
   $days = array();
   for($d = 0; $d < count($rooms); $d++) {
+    $room = $rooms[$d];
     $day = [
-      'id'       => $rooms[$d]['id'],
-      'name'     => $rooms[$d]['name'],
-      'fullname' => $rooms[$d]['name'],
+      'id'       => $room['id'],
+      'name'     => $room['name'],
+      'fullname' => $room['name'],
       'hours'    => array(),
       'slots'    => array()
     ];
 
-    $slots = [];
-    foreach ($reserves as $reserve) {
-      if($reserve['room_id'] == $rooms[$d]['id']) {
-        $slots[] = $reserve;
-      }
-    }
+    $slots = array_filter($events, function ($event) use ($room) {
+      return $event['room_id'] == $room['id'];
+    });
 
     foreach ($slots as $slot) {
 
@@ -209,7 +101,7 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
       $fromMinute = $slot['from'] - $fromHour * 60;
       $toHour     = floor($slot['to'] / 60);
       $toMinute   = $slot['to'] - $toHour * 60;
-      $slot['title'] = $rooms[$d]['name'] . ' с ' . date('H:i', mktime($fromHour, $fromMinute)) . ' до ' . date('H:i', mktime($toHour, $toMinute));
+      $slot['title'] = $room['name'] . ' с ' . date('H:i', mktime($fromHour, $fromMinute)) . ' до ' . date('H:i', mktime($toHour, $toMinute));
 
       $day['slots'][] = $slot;
     }
@@ -247,90 +139,52 @@ $app->match('/', function (Request $req) use ($app, $view, $db) {
     $html .= '</div>';
   }
   $html .= '</div>';
-  return $view->render("index", [
+  return $app['view']->render("index", [
     "body" => $html,
     "date" => $date,
     "rooms" => $rooms,
-    "reserves" => $reserves
+    "reserves" => $events
   ]);
 });
 
-$app->match('/google-calendar/', function (Request $req) use ($app, $view) {
+$app->get('/google-calendar/', function (Request $req, Silex\Application $app) {
 
-  $client = new Google_Client([
-    'application_name' => 'Google Calendar API PHP Quickstart',
-    'access_type' => 'online',
-    'redirect_uri' => 'http://' . $req->getHttpHost() . '/google-calendar/'
-  ]);
-  $client->addScope(Google_Service_Calendar::CALENDAR_READONLY);
-  $client->setAuthConfig(__DIR__ . '/../data/client_secret_web.json');
+  /* @var $client Google_Client */
+  $client = $app['client'];
 
   // Load previously authorized credentials from a file.
-  $credentialsPath = __DIR__ . '/../data/calendar-php-quickstart.json';
-  $meetroomsPath = __DIR__ . '/../data/meetrooms.json';
+  $credentialsPath = $app['config']['storage']['app_credentials'];
 
+  // Success redirect from google calendar
   if($req->get('code')) {
     $accessToken = $client->fetchAccessTokenWithAuthCode($req->get('code'));
     file_put_contents($credentialsPath, json_encode($accessToken));
-    return new RedirectResponse('/google-calendar/');
+    return new RedirectResponse('/select-rooms/');
+  }
+});
+
+$app->match('/select-rooms/', function (Request $req, Silex\Application $app) {
+
+  /* @var $client Google_Client */
+  $client = $app['client'];
+
+  if( !$client->getAccessToken() ) {
+    throw new Exception("No access token", 404);
   }
 
+  $calendarsPath   = $app['config']['storage']['calendars'];
+  // Select active calendars as "rooms"
   if($req->getMethod() == 'POST') {
     $calendars = $req->request->get('calendar');
-    file_put_contents($meetroomsPath, json_encode($calendars));
+    file_put_contents($calendarsPath, json_encode($calendars));
     return new RedirectResponse('/');
   }
 
-  if (file_exists($credentialsPath)) {
-    $accessToken = json_decode(file_get_contents($credentialsPath), true);
-  } else {
-    return new RedirectResponse($client->createAuthUrl());
-  }
-
-  $client->setAccessToken($accessToken);
-
-  // Refresh the token if it's expired.
-  if ($client->isAccessTokenExpired()) {
-    $refreshTokenSaved = $client->getRefreshToken();
-    if($refreshTokenSaved) {
-      $client->fetchAccessTokenWithRefreshToken($refreshTokenSaved);
-      $accessTokenUpdated = $client->getAccessToken();
-      $accessTokenUpdated['refresh_token'] = $refreshTokenSaved;
-
-      file_put_contents($credentialsPath, json_encode($accessTokenUpdated));
-    } else {
-      return new RedirectResponse($client->createAuthUrl());
-    }
-  }
-
   $service = new Google_Service_Calendar($client);
-
-  // Print the next 10 events on the user's calendar.
-  $dt = new DateTime(date('Y-m-d 00:00:00'));
   $list = $service->calendarList->listCalendarList();
-  $meetrooms = json_decode(file_exists($meetroomsPath) ? file_get_contents($meetroomsPath) : '[]');
-  $events = array();
-  foreach ($list as $calendar) {
-    if(in_array($calendar->id, $meetrooms)) {
-      $events = $service->events->listEvents($calendar->id, array(
-        'maxResults' => 999,
-        'orderBy' => 'startTime',
-        'singleEvents' => TRUE,
-        'timeMin' => $dt->format('c'),
-        'timeMax' => $dt->add(new DateInterval('P1D'))->format('c'),
-      ));
-    }
-  }
-
-  if(empty($meetrooms) && $list->count()) {
-    return $view->render('google_calendar_select', [
-      'calendars' => $list
-    ]);
-  } else {
-    return $view->render('google_calendar_events', [
-      'events' => $events
-    ]);
-  }
+  return $app['view']->render('google_calendar_select', [
+    'calendars' => $list
+  ]);
 });
 
 $app->run();

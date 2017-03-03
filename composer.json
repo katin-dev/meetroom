@@ -5,7 +5,6 @@
         "silex/silex": "^2.0",
         "twig/twig": "^1.29",
         "league/plates": "^3.1",
-        "catfan/Medoo": "^1.1",
         "google/apiclient": "^2.0"
     },
     "authors": [
@@ -13,5 +12,8 @@
             "name": "Sergey Katin",
             "email": "katinsv@profi.ru"
         }
-    ]
+    ],
+    "autoload": {
+        "psr-4": {"App\\": "App/"}
+    }
 }

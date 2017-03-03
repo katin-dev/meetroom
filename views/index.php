@@ -60,28 +60,6 @@
     </h1>
     <?=$body?>
     <div class="container">
-    <div style="margin:15px 0 10px 0;">
-        <button class="btn btn-default" onclick="$('#List').toggleClass('hidden');">Показать таблицу</button>
-        <a href="/google-calendar/" class="btn btn-default">Привязать Google Calendar</a>
-    </div>
-    <table class="table hidden" id="List">
-      <?php foreach ($reserves as $reserve): ?>
-          <tr>
-              <td><?=$reserve['name']?></td>
-              <td><?=$reserve['dt_from']?></td>
-              <td><?=$reserve['dt_to']?></td>
-              <td><?=$reserve['repeated']?></td>
-              <td><?=$this->e($reserve['comment'])?></td>
-              <td>
-                  <form action="" method="post">
-                      <input type="hidden" name="reserve_id" value="<?=$reserve['id']?>" />
-                      <input type="hidden" name="date" value="<?=$date?>" />
-                      <input type="submit" name="del" value="Удалить" class="btn btn-danger btn-xs" onclick="return confirm('Вы правда хотите удалить эту бронь?');"/>
-                  </form>
-              </td>
-          </tr>
-      <?php endforeach; ?>
-    </table>
     <div class="modal fade" tabindex="-1" id="ReserveModal">
         <div class="modal-dialog">
             <div class="modal-content">
