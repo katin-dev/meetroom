@@ -109,6 +109,8 @@ $app->match('/', function (Request $req, Silex\Application $app) {
     $days[] = $day;
   }
 
+  $currentHour = $date == date('Y-m-d') ? date('H') : null;
+
   $html = '';
   $html .=
     '<div class="calendar">
@@ -131,7 +133,9 @@ $app->match('/', function (Request $req, Silex\Application $app) {
       '<div class="calendar-day">' .
       '<div class="calendar-dayname" data-id="'.$day['id'].'">'. $day['name'] .'</div>';
     foreach ($hours as $hour) {
-      $html .= '<div class="calender-hour" data-hour="'.$hour['hour'].'"></div>';
+      $hourClasses = ['calender-hour'];
+      if($hour['hour'] == $currentHour) $hourClasses[] = "active";
+      $html .= '<div class="'.implode(" ", $hourClasses).'" data-hour="'.$hour['hour'].'"></div>';
     }
     foreach($day['slots'] as $slot) {
       $html .= sprintf('<div class="calender-slot" style="left:%s%%; width:%s%%" title="%s" data-toggle="popover" data-placement="bottom" data-trigger="hover" data-content="%s"></div>',$slot['left'], $slot['width'], $slot['title'], $slot['comment']);
