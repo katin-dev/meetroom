@@ -28,7 +28,8 @@ class Service extends \Google_Service_Calendar
             'room_id' => $calendar->id,
             'dt_from' => $event->start->dateTime,
             'dt_to'   => $event->end->dateTime,
-            'comment' => $event->summary
+            'comment' => $event->summary,
+            'color'   => $calendar->backgroundColor
           ];
         }
       }

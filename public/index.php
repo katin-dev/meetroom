@@ -138,7 +138,7 @@ $app->match('/', function (Request $req, Silex\Application $app) {
       $html .= '<div class="'.implode(" ", $hourClasses).'" data-hour="'.$hour['hour'].'"></div>';
     }
     foreach($day['slots'] as $slot) {
-      $html .= sprintf('<div class="calender-slot" style="left:%s%%; width:%s%%" title="%s" data-toggle="popover" data-placement="bottom" data-trigger="hover" data-content="%s"></div>',$slot['left'], $slot['width'], $slot['title'], $slot['comment']);
+      $html .= sprintf('<div class="calender-slot" style="left:%s%%; width:%s%%; background-color:%s" title="%s" data-toggle="popover" data-placement="bottom" data-trigger="hover" data-content="%s"></div>',$slot['left'], $slot['width'], $slot['color'], $slot['title'], $slot['comment']);
     }
     $html .= '</div>';
   }
